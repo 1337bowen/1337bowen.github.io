@@ -3,67 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Blog</title>
+    <title>My Blog - Conway's Game of Life</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
             line-height: 1.6;
             color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        .content {
+            position: relative;
             max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 20px;
+            padding: 40px;
+            background-color: white;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+            z-index: 2;
         }
         header {
-            background-color: #f4f4f4;
-            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            color: #333;
             text-align: center;
         }
         nav {
             margin-top: 1rem;
+            text-align: center;
         }
         nav a {
             margin-right: 10px;
+            color: #666;
+            text-decoration: none;
+        }
+        nav a:hover {
+            color: #333;
         }
         .blog-post {
-            border-bottom: 1px solid #ccc;
+            border-bottom: 1px solid #eee;
             padding-bottom: 20px;
             margin-bottom: 20px;
         }
+        .blog-post:last-child {
+            border-bottom: none;
+        }
         .blog-post h2 {
-            color: #1a1a1a;
+            color: #444;
         }
         .blog-post .date {
-            color: #666;
+            color: #888;
             font-style: italic;
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #888;
         }
     </style>
 </head>
 <body>
-    <header>
-        <h1>My Blog</h1>
-        <nav>
-            <a href="index.html">Home</a>
-            <a href="about.html">About</a>
-            <a href="contact.html">Contact</a>
-        </nav>
-    </header>
+    <div id="canvas-container"></div>
+    <div class="content">
+        <header>
+            <h1>My Blog</h1>
+            <nav>
+                <a href="index.html">Home</a>
+                <a href="about.html">About</a>
+                <a href="contact.html">Contact</a>
+            </nav>
+        </header>
 
-    <main>
-        <article class="blog-post">
-            <h2>My First Blog Post</h2>
-            <p class="date">Published on July 6, 2024</p>
-            <p>This is the content of my first blog post. Welcome to my blog!</p>
-        </article>
+        <main>
+            <article class="blog-post">
+                <h2>Welcome to My Blog</h2>
+                <p class="date">Published on July 6, 2024</p>
+                <p>Welcome to my blog! The border around this content features Conway's Game of Life implemented with Three.js.</p>
+            </article>
 
-        <article class="blog-post">
-            <h2>Another Interesting Post</h2>
-            <p class="date">Published on July 7, 2024</p>
-            <p>Here's another fascinating blog post about something interesting.</p>
-        </article>
-    </main>
+            <article class="blog-post">
+                <h2>About Conway's Game of Life</h2>
+                <p class="date">Published on July 7, 2024</p>
+                <p>Conway's Game of Life is a cellular automaton devised by mathematician John Conway. It's a zero-player game, meaning its evolution is determined by its initial state, with no further input from humans.</p>
+            </article>
+        </main>
 
-    <footer>
-        <p>&copy; 2024 My Blog. All rights reserved.</p>
-    </footer>
+        <footer>
+            <p>&copy; 2024 My Blog. All rights reserved.</p>
+        </footer>
+    </div>
+
+    <script>
+        let scene, camera, renderer, grid, material;
+        const size = 100;
+        const cellSize = 0.02;
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+            renderer = new THREE.WebGLRenderer({ alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            camera.position.z = 1;
+
+            material = new THREE.MeshBasicMaterial({ color: 0x000000, side: THREE.DoubleSide });
+
+            grid = new Array(size).fill().map(() => new Array(size).fill().map(() => Math.random() > 0.7));
+            createGrid();
+
+            animate();
+        }
+
+        function createGrid() {
+            scene.clear();
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    if (grid[x][y]) {
+                        const geometry = new THREE.PlaneGeometry(cellSize, cellSize);
+                        const cell = new THREE.Mesh(geometry, material);
+                        
+                        // Calculate position to create a border effect
+                        let posX, posY;
+                        if (x < size / 2) {
+                            posX = x * cellSize - 1;
+                        } else {
+                            posX = (x - size / 2) * cellSize + 0.5;
+                        }
+                        if (y < size / 2) {
+                            posY = y * cellSize - 1;
+                        } else {
+                            posY = (y - size / 2) * cellSize + 0.5;
+                        }
+                        
+                        cell.position.set(posX, posY, 0);
+                        scene.add(cell);
+                    }
+                }
+            }
+        }
+
+        function updateGrid() {
+            const newGrid = grid.map(arr => [...arr]);
+            for (let x = 0; x < size; x++) {
+                for (let y = 0; y < size; y++) {
+                    const neighbors = countNeighbors(x, y);
+                    if (grid[x][y]) {
+                        newGrid[x][y] = neighbors === 2 || neighbors === 3;
+                    } else {
+                        newGrid[x][y] = neighbors === 3;
+                    }
+                }
+            }
+            grid = newGrid;
+        }
+
+        function countNeighbors(x, y) {
+            let count = 0;
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    if (i === 0 && j === 0) continue;
+                    const newX = (x + i + size) % size;
+                    const newY = (y + j + size) % size;
+                    if (grid[newX][newY]) count++;
+                }
+            }
+            return count;
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            updateGrid();
+            createGrid();
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            const aspect = window.innerWidth / window.innerHeight;
+            let width, height;
+            if (aspect > 1) {
+                width = 1;
+                height = 1 / aspect;
+            } else {
+                width = aspect;
+                height = 1;
+            }
+            camera.left = -width;
+            camera.right = width;
+            camera.top = height;
+            camera.bottom = -height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        window.addEventListener('resize', onWindowResize);
+
+        init();
+        onWindowResize();
+    </script>
 </body>
 </html>
