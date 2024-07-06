@@ -1,2 +1,2 @@
 # Personal Website
-portfolio, resume, blog!
+portfolio resume and blog coming soon...
